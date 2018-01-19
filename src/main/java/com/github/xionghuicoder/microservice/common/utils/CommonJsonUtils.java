@@ -8,9 +8,10 @@ import com.alibaba.fastjson.serializer.SerializeConfig;
 import com.alibaba.fastjson.serializer.SimpleDateFormatSerializer;
 
 /**
- * json工具类,解析Object为json
+ * json工具类，把Object转为json
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonJsonUtils {

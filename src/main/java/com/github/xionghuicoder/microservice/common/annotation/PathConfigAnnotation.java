@@ -12,9 +12,10 @@ import org.springframework.core.annotation.AliasFor;
 import com.github.xionghuicoder.microservice.common.bean.enums.HttpRequestMethod;
 
 /**
- * 配置路径，方法等信息
+ * 配置路径，方法，uri等信息
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 @Target({ElementType.TYPE, ElementType.METHOD, ElementType.FIELD})
@@ -36,5 +37,4 @@ public @interface PathConfigAnnotation {
   boolean supportFeign() default false;
 
   HttpRequestMethod[] method() default {HttpRequestMethod.GET, HttpRequestMethod.POST};
-
 }

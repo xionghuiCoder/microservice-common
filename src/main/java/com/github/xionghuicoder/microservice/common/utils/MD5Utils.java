@@ -2,13 +2,14 @@ package com.github.xionghuicoder.microservice.common.utils;
 
 import java.security.MessageDigest;
 
+import com.github.xionghuicoder.microservice.common.BusinessException;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
 
 /**
- * md5加密处理类
+ * md5 hash处理类
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class MD5Utils {
@@ -17,8 +18,11 @@ public class MD5Utils {
   private final static char[] hexDigits =
       {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
-  /*
-   * md5加密操作
+  /**
+   * md5 hash操作
+   *
+   * @param inbuf hash前字符串
+   * @return hash后字符串
    */
   public static String md5(String inbuf) {
     try {

@@ -5,8 +5,9 @@ import java.text.SimpleDateFormat;
 
 /**
  * common常量类
- *
+ * 
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonConstants {

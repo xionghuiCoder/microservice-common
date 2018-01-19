@@ -6,17 +6,16 @@ import java.util.List;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.github.xionghuicoder.microservice.common.BusinessException;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
 import com.github.xionghuicoder.microservice.common.bean.CommonDomain;
 import com.github.xionghuicoder.microservice.common.bean.enums.HttpResultEnum;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
 
 /**
- * 处理修改bean时候的vo: diffBean和originBean <br />
- *
- * 处理批量删除和批量提交等操作
+ * 处理修改，删除，批量删除等操作的参数
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class BatchOperationParamsUtils {
@@ -54,7 +53,7 @@ public class BatchOperationParamsUtils {
     if (originArray == null || originArray.size() == 0) {
       throw new BusinessException("origins is empty", HttpResultEnum.BatchDeleteOriginsNullError);
     }
-    List<T> originList = new ArrayList<>(originArray.size());
+    List<T> originList = new ArrayList<T>(originArray.size());
     for (Object obj : originArray) {
       JSONObject json = (JSONObject) obj;
       T bean = JSON.parseObject(json.toJSONString(), clazz);

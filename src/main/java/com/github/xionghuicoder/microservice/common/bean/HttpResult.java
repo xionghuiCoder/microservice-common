@@ -11,8 +11,9 @@ import com.github.xionghuicoder.microservice.common.utils.CommonResourceBundleMe
 
 /**
  * HTTP处理结果
- *
+ * 
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class HttpResult<T> implements Serializable {

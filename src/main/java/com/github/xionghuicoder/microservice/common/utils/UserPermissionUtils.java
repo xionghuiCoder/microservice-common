@@ -12,11 +12,12 @@ import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
 import com.github.xionghuicoder.microservice.common.bean.CommonParamsBean;
 
 /**
- * 编码和解码user,permission(因为可能有中文等字符)<br />
+ * 编码和解码user、permission(因为可能有中文等字符)；<br>
  *
- * 获取user,permission信息
+ * 获取user、permission信息
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class UserPermissionUtils {

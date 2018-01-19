@@ -1,11 +1,12 @@
-package com.github.xionghuicoder.microservice.common.exception;
+package com.github.xionghuicoder.microservice.common;
 
 import com.github.xionghuicoder.microservice.common.bean.enums.IHttpResultEnum;
 
 /**
- * utils的公共异常
+ * common异常类
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonException extends RuntimeException {

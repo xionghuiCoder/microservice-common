@@ -1,14 +1,15 @@
 package com.github.xionghuicoder.microservice.common.utils;
 
+import com.github.xionghuicoder.microservice.common.CommonException;
 import com.github.xionghuicoder.microservice.common.bean.HttpResult;
 import com.github.xionghuicoder.microservice.common.bean.enums.HttpResultEnum;
 import com.github.xionghuicoder.microservice.common.bean.enums.IHttpResultEnum;
-import com.github.xionghuicoder.microservice.common.exception.CommonException;
 
 /**
- * 异常处理类，解析异常信息为HttpResult
+ * 异常处理类，把异常信息转为HttpResult
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonExceptionUtils {

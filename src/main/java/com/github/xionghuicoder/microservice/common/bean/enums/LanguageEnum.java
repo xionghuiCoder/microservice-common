@@ -11,6 +11,7 @@ import com.alibaba.fastjson.JSONObject;
  * 国际化多语言
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public enum LanguageEnum {
@@ -19,7 +20,7 @@ public enum LanguageEnum {
   English("english", "English", Locale.ENGLISH), //
   ;
 
-  // default is Simpchn
+  // default
   private static final LanguageEnum DEFAULT = Simpchn;
 
   public final String code;
@@ -33,7 +34,7 @@ public enum LanguageEnum {
   }
 
   private static final JSONArray VALUE_ARRAY = new JSONArray();
-  private static final Map<String, LanguageEnum> LANGUAGE_MAP = new HashMap<>();
+  private static final Map<String, LanguageEnum> LANGUAGE_MAP = new HashMap<String, LanguageEnum>();
 
   static {
     for (LanguageEnum languageEnum : LanguageEnum.values()) {

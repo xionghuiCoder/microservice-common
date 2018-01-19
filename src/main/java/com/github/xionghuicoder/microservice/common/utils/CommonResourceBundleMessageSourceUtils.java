@@ -15,20 +15,21 @@ import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 
+import com.github.xionghuicoder.microservice.common.BusinessException;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
 import com.github.xionghuicoder.microservice.common.bean.enums.LanguageEnum;
 import com.github.xionghuicoder.microservice.common.controller.CommonController;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
 
 /**
- * 多语初始化处理工具类，会同时获取common的数据
+ * 多语初始化处理工具类，会同时获取common的多语数据
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonResourceBundleMessageSourceUtils extends ResourceBundleMessageSource {
   private static final Map<Locale, Map<String, String>> CACHED_RESOURCE_BUNDLE_MAP =
-      new ConcurrentHashMap<>();
+      new ConcurrentHashMap<Locale, Map<String, String>>();
 
   protected void init() {
     this.init(null);
@@ -57,7 +58,7 @@ public class CommonResourceBundleMessageSourceUtils extends ResourceBundleMessag
   private void load(String basename, Locale locale) {
     Map<String, String> bundleMap = CACHED_RESOURCE_BUNDLE_MAP.get(locale);
     if (bundleMap == null) {
-      bundleMap = new ConcurrentHashMap<>();
+      bundleMap = new ConcurrentHashMap<String, String>();
       CACHED_RESOURCE_BUNDLE_MAP.put(locale, bundleMap);
     }
     ResourceBundle bundle = null;

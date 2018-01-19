@@ -9,8 +9,9 @@ import java.lang.annotation.Target;
 
 /**
  * 开启路径配置
- *
+ * 
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 @Target({ElementType.TYPE})

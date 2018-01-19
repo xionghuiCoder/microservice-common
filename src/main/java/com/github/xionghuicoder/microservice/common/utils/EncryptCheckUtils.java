@@ -3,13 +3,14 @@ package com.github.xionghuicoder.microservice.common.utils;
 import java.text.ParseException;
 import java.util.Date;
 
+import com.github.xionghuicoder.microservice.common.BusinessException;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
 
 /**
- * 加密检查：计算时间是否在前后5分钟范围
+ * 加密检查：计算时间是否在前后5分钟范围内
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class EncryptCheckUtils {
@@ -28,7 +29,7 @@ public class EncryptCheckUtils {
     }
     Date now = new Date();
     // 转换成分钟
-    long between = Math.abs((now.getTime() - date.getTime()) / 60_000);
+    long between = Math.abs((now.getTime() - date.getTime()) / 60000);
     if (between > 5) {
       throw new BusinessException("time is illegal: " + now + " " + date);
     }
