@@ -5,11 +5,11 @@ import java.io.Serializable;
 import com.alibaba.fastjson.JSONObject;
 import com.github.xionghuicoder.microservice.common.bean.CommonParamsBean.User;
 
-
 /**
  * service参数
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class ServiceParamsBean implements Serializable {
@@ -65,8 +65,9 @@ public class ServiceParamsBean implements Serializable {
 
   /**
    * builder构建类
-   *
+   * 
    * @author xionghui
+   * @version 1.0.0
    * @since 1.0.0
    */
   public static class Builder {

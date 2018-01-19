@@ -9,8 +9,9 @@ import java.lang.annotation.Target;
 
 /**
  * 定义需要扫描的包路径
- *
+ * 
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 @Target(ElementType.TYPE)
@@ -20,5 +21,4 @@ import java.lang.annotation.Target;
 public @interface ControllerMappingAnnotation {
 
   String value() default "";
-
 }

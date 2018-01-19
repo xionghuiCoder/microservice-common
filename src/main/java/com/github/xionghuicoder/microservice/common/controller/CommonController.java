@@ -2,7 +2,9 @@ package com.github.xionghuicoder.microservice.common.controller;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -17,31 +19,33 @@ import org.springframework.web.multipart.MultipartFile;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
+import com.github.xionghuicoder.microservice.common.BusinessException;
 import com.github.xionghuicoder.microservice.common.annotation.MenuAnnotation;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
 import com.github.xionghuicoder.microservice.common.bean.CommonParamsBean;
 import com.github.xionghuicoder.microservice.common.bean.HttpResult;
+import com.github.xionghuicoder.microservice.common.bean.RegisterBean;
 import com.github.xionghuicoder.microservice.common.bean.ServiceParamsBean;
 import com.github.xionghuicoder.microservice.common.bean.UploadServiceParamsBean;
 import com.github.xionghuicoder.microservice.common.bean.enums.HttpRequestMethod;
 import com.github.xionghuicoder.microservice.common.bean.enums.HttpResultEnum;
 import com.github.xionghuicoder.microservice.common.bean.enums.LanguageEnum;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
 import com.github.xionghuicoder.microservice.common.utils.CommonExceptionUtils;
 import com.github.xionghuicoder.microservice.common.utils.CommonRequestUtils;
 import com.github.xionghuicoder.microservice.common.utils.RequestMethodUtils;
 import com.github.xionghuicoder.microservice.common.utils.UserPermissionUtils;
 
 /**
- * 公共controller操作，负责请求检查,映射等
+ * 公共controller操作，负责请求检查，映射等
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public abstract class CommonController extends RegisterController {
   private static final Logger LOGGER = LoggerFactory.getLogger(CommonController.class);
 
-  private static final Set<String> NOLOG_FUNCTION_SET = new HashSet<>();
+  private static final Set<String> NOLOG_FUNCTION_SET = new HashSet<String>();
 
   // 存储多语
   private static final ThreadLocal<Locale> LOCALE_THREADLOCAL = new ThreadLocal<Locale>();
@@ -52,6 +56,9 @@ public abstract class CommonController extends RegisterController {
 
   /**
    * restful服务请求入口
+   *
+   * @param request 请求request
+   * @return HttpResult<?>
    */
   protected HttpResult<?> recieve(HttpServletRequest request) {
     HttpResult<?> httpResult = null;
@@ -88,6 +95,8 @@ public abstract class CommonController extends RegisterController {
 
   /**
    * download请求入口
+   *
+   * @param request 请求request
    */
   protected void download(HttpServletRequest request) {
     try {
@@ -110,23 +119,36 @@ public abstract class CommonController extends RegisterController {
 
   /**
    * upload请求入口
+   *
+   * @param request 请求request
+   * @param file 上传文件
+   * @return HttpResult<?>
    */
-  protected HttpResult<?> upload(HttpServletRequest request, MultipartFile file) {
+  protected HttpResult<?> upload(HttpServletRequest request, MultipartFile[] files) {
     HttpResult<?> httpResult = null;
     try {
       LOGGER.info("upload begin");
       CommonParamsBean paramsBean = this.convertCheckParams(request);
-      if (file == null) {
-        throw new BusinessException("upload file is null", HttpResultEnum.UploadNullFileError);
+      if (files == null || files.length == 0) {
+        throw new BusinessException("upload files is null or files' length is 0",
+            HttpResultEnum.UploadNullFileError);
       }
-      LOGGER.info("upload params, method: {}, url: {}, file: {}, params: {}",
-          paramsBean.getHttpRequestMethod(), request.getRequestURL().toString(),
-          file.getOriginalFilename(), paramsBean);
+      List<String> filenameList = new ArrayList<String>();
+      for (MultipartFile file : files) {
+        if (file == null) {
+          throw new BusinessException("upload file in files is null",
+              HttpResultEnum.UploadNullFileError);
+        }
+        filenameList.add(file.getOriginalFilename());
+      }
+      LOGGER.info("upload params, method: {}, url: {}, files: {}, params: {}",
+          paramsBean.getHttpRequestMethod(), request.getRequestURL().toString(), filenameList,
+          paramsBean);
       ControllerProxy controllerProxy = this.dealController(paramsBean);
       UploadServiceParamsBean uploadServiceParamsBean = UploadServiceParamsBean.uploadCustom()
           .setBody(paramsBean.getBody()).setBodyJson(paramsBean.getBodyJson())
           .setExt(paramsBean.getExt()).setPermissionJson(paramsBean.getPermissionJson())
-          .setUser(paramsBean.getUser()).setFile(file).build();
+          .setUser(paramsBean.getUser()).setFiles(files).build();
       httpResult = (HttpResult<?>) controllerProxy.getMethod()
           .invoke(controllerProxy.getController(), uploadServiceParamsBean);
       if (httpResult == null) {
@@ -144,8 +166,9 @@ public abstract class CommonController extends RegisterController {
   }
 
   private ControllerProxy dealController(CommonParamsBean paramsBean) {
-    String beanName = this.buildBeanName(paramsBean.getUri(), paramsBean.getFunction());
-    ControllerProxy controllerProxy = this.getBean(beanName);
+    RegisterBean registerBean =
+        new RegisterBean(this.dealUri(paramsBean.getUri()), paramsBean.getFunction());
+    ControllerProxy controllerProxy = this.getBean(registerBean);
     if (controllerProxy == null) {
       throw new BusinessException(HttpResultEnum.NullControllerError);
     }
@@ -178,6 +201,11 @@ public abstract class CommonController extends RegisterController {
 
   /**
    * 转换并检查参数
+   *
+   * @param request 请求request
+   * @return CommonParamsBean
+   * @throws IOException IOException
+   * @throws ServletException ServletException
    */
   private CommonParamsBean convertCheckParams(HttpServletRequest request)
       throws IOException, ServletException {
@@ -225,8 +253,13 @@ public abstract class CommonController extends RegisterController {
 
   /**
    * 检查菜单权限
+   *
+   * @param controllerClass controllerClass
+   * @param controllerMethod controllerMethod
+   * @param permissionJson permissionJson
    */
-  private void checkMenu(Class<?> controllerClass, Method controllerMethod, JSONObject aclJson) {
+  private void checkMenu(Class<?> controllerClass, Method controllerMethod,
+      JSONObject permissionJson) {
     String[] menus = null;
     MenuAnnotation methodMenuAnnotation = controllerMethod.getAnnotation(MenuAnnotation.class);
     if (methodMenuAnnotation != null) {
@@ -242,8 +275,8 @@ public abstract class CommonController extends RegisterController {
     }
 
     boolean menuRight = false;
-    if (aclJson != null) {
-      JSONObject menuJson = aclJson.getJSONObject(CommonConstants.PERMISSION_MENU);
+    if (permissionJson != null) {
+      JSONObject menuJson = permissionJson.getJSONObject(CommonConstants.PERMISSION_MENU);
       if (menuJson != null) {
         for (String menu : menus) {
           Boolean value = menuJson.getBoolean(menu);

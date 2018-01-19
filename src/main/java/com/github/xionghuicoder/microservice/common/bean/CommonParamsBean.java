@@ -9,6 +9,7 @@ import com.github.xionghuicoder.microservice.common.bean.enums.HttpRequestMethod
  * 请求参数bean
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonParamsBean implements Serializable {
@@ -96,6 +97,7 @@ public class CommonParamsBean implements Serializable {
    * builder构建类
    *
    * @author xionghui
+   * @version 1.0.0
    * @since 1.0.0
    */
   public static class Builder {
@@ -164,8 +166,9 @@ public class CommonParamsBean implements Serializable {
 
   /**
    * 用户相关信息
-   *
+   * 
    * @author xionghui
+   * @version 1.0.0
    * @since 1.0.0
    */
   public static class User implements Serializable {

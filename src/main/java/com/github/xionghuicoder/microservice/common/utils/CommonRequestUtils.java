@@ -10,12 +10,16 @@ import javax.servlet.http.HttpServletRequest;
  * HttpServletRequest工具类
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class CommonRequestUtils {
 
   /**
    * 获取请求参数
+   *
+   * @param request request
+   * @return Map
    */
   public static Map<String, String> getParameterMap(HttpServletRequest request) {
     if (request == null) {

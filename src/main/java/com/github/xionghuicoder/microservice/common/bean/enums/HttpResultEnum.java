@@ -1,9 +1,10 @@
 package com.github.xionghuicoder.microservice.common.bean.enums;
 
 /**
- * HTTP结果枚举类
+ * HTTP结果枚举类，<tt>code</tt>为<tt>0</tt>表示请求成功
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public enum HttpResultEnum implements IHttpResultEnum {
@@ -34,7 +35,7 @@ public enum HttpResultEnum implements IHttpResultEnum {
   ExportFailed(28, "common-m10014"), // 导出失败
   BatchInsertFailed(30, "common-m10015"), // 批量新增失败
 
-  UploadNullFileError(50, "common-m20011"), // 上传文件为null
+  UploadNullFileError(50, "common-m20011"), // 上传文件为空
   FunctionLackError(52, "common-m20012"), // 缺少function参数
   BodyFormatError(54, "common-m20013"), // body格式不正确
   BodyLackError(56, "common-m20014"), // 缺少body参数

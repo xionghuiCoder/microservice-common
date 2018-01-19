@@ -6,13 +6,14 @@ import java.net.URLEncoder;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.github.xionghuicoder.microservice.common.BusinessException;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
 
 /**
- * 设置下载的header
+ * 下载的header设置
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public class DownloadHttpHeaderUtil {

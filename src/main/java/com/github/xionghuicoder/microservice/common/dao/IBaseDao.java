@@ -8,22 +8,22 @@ import com.github.xionghuicoder.microservice.common.bean.CommonDomain;
  * 定义DAO操作接口
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 public interface IBaseDao<B extends CommonDomain> {
 
-  public void insert(B bean);
+  void insert(B bean);
 
-  public int update(B bean);
+  int update(B bean);
 
-  public List<B> queryOrigin(B condition);
+  List<B> queryOrigin(B condition);
 
-  public int delete(B bean);
+  int delete(B bean);
 
-  public int batchInsert(List<B> beanList);
+  int batchInsert(List<B> beanList);
 
-  public int batchDelete(List<B> beanList);
+  int batchDelete(List<B> beanList);
 
-  public List<B> queryOriginList(List<B> beanList);
-
+  List<B> queryOriginList(List<B> beanList);
 }

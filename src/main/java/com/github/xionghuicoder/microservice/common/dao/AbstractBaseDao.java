@@ -1,8 +1,10 @@
 package com.github.xionghuicoder.microservice.common.dao;
 
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,6 +15,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.github.xionghuicoder.microservice.common.BusinessException;
+import com.github.xionghuicoder.microservice.common.DAOException;
 import com.github.xionghuicoder.microservice.common.bean.CommonConstants;
 import com.github.xionghuicoder.microservice.common.bean.CommonDomain;
 import com.github.xionghuicoder.microservice.common.bean.enums.HttpResultEnum;
@@ -24,24 +28,25 @@ import com.github.xionghuicoder.microservice.common.dao.rule.IBeforeRule;
 import com.github.xionghuicoder.microservice.common.dao.rule.impl.CheckBatchParamsInsertBeforeRule;
 import com.github.xionghuicoder.microservice.common.dao.rule.impl.CheckParamsInsertBeforeRule;
 import com.github.xionghuicoder.microservice.common.dao.rule.impl.CheckParamsUpdateBeforeRule;
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
-import com.github.xionghuicoder.microservice.common.exception.DAOException;
 
 /**
  * DAO模板方法
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 @Transactional(isolation = Isolation.READ_UNCOMMITTED)
 public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDao<B> {
   protected IBaseDao<B> iBaseDao;
 
-  private final LinkedList<IBeforeRule<B>> iBeforeRuleList = new LinkedList<>();
-  private final LinkedList<IAfterRule<B>> iAfterRuleList = new LinkedList<>();
+  private final Deque<IBeforeRule<B>> iBeforeRuleList = new LinkedList<IBeforeRule<B>>();
+  private final Deque<IAfterRule<B>> iAfterRuleList = new LinkedList<IAfterRule<B>>();
 
-  private final LinkedList<IBatchBeforeRule<B>> iBatchBeforeRuleList = new LinkedList<>();
-  private final LinkedList<IBatchAfterRule<B>> iBatchAfterRuleList = new LinkedList<>();
+  private final Deque<IBatchBeforeRule<B>> iBatchBeforeRuleList =
+      new LinkedList<IBatchBeforeRule<B>>();
+  private final Deque<IBatchAfterRule<B>> iBatchAfterRuleList =
+      new LinkedList<IBatchAfterRule<B>>();
 
   @Override
   public void insert(B bean) {
@@ -62,8 +67,8 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
       throw new DAOException(HttpResultEnum.VersionNullError);
     }
     @SuppressWarnings("unchecked")
-    B originDomain = (B) diffBean.getOriginDomain();
-    this.convertBean(diffBean, originDomain, originDBBean);
+    B originBean = (B) diffBean.getOriginDomain();
+    this.convertBean(diffBean, originBean, originDBBean);
 
     for (IBeforeRule<B> iBeforeRule : this.iBeforeRuleList) {
       iBeforeRule.beforeRule(diffBean, originDBBean);
@@ -96,28 +101,32 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
   }
 
   protected B queryOriginBean(B condition) {
-    B domain = null;
+    B bean = null;
     if (condition != null && condition.getUuid() != null) {
-      List<B> domainList = this.iBaseDao.queryOrigin(condition);
-      if (domainList != null && domainList.size() == 1) {
-        domain = domainList.get(0);
+      List<B> beanList = this.iBaseDao.queryOrigin(condition);
+      if (beanList != null && beanList.size() == 1) {
+        bean = beanList.get(0);
       }
     }
-    if (domain == null) {
+    if (bean == null) {
       throw new DAOException(HttpResultEnum.NotExistedError);
     }
-    return domain;
+    return bean;
   }
 
   /**
    * 计算diffBean和originDBBean的数据，恢复diffBean未修改的一些值
+   *
+   * @param diffBean 前端传过来的diff bean
+   * @param originBean 前端传过来的origin bean
+   * @param originDBBean 数据库查出来的bean
    */
-  private void convertBean(B diffBean, B originDomain, B originDBBean) {
-    originDomain.setUuid(diffBean.getUuid());
+  private void convertBean(B diffBean, B originBean, B originDBBean) {
+    originBean.setUuid(diffBean.getUuid());
     originDBBean.setUuid(diffBean.getUuid());
 
     Set<String> diffFieldSet = diffBean.getFieldSet();
-    Set<String> originFieldSet = originDomain.getFieldSet();
+    Set<String> originFieldSet = originBean.getFieldSet();
     PropertyDescriptor[] pds = BeanUtils.getPropertyDescriptors(diffBean.getClass());
     for (PropertyDescriptor pd : pds) {
       Method writeMethod = pd.getWriteMethod();
@@ -132,7 +141,7 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
         String fieldName = pd.getName();
         Object originDBValue = readMethod.invoke(originDBBean);
         if (originFieldSet.contains(fieldName)) {
-          Object originValue = readMethod.invoke(originDomain);
+          Object originValue = readMethod.invoke(originBean);
           if (originValue == null ? originDBValue != null : !originValue.equals(originDBValue)) {
             throw new DAOException(HttpResultEnum.UpdateWhileUpdated);
           }
@@ -141,7 +150,9 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
             writeMethod.invoke(diffBean, originValue);
           }
         }
-      } catch (ReflectiveOperationException e) {
+      } catch (IllegalAccessException e) {
+        throw new DAOException(e);
+      } catch (InvocationTargetException e) {
         throw new DAOException(e);
       }
     }
@@ -153,14 +164,14 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
     if (diffFieldSet == null) {
       throw new DAOException(HttpResultEnum.UpdateDiffNullError);
     }
-    CommonDomain originDomain = diffBean.getOriginDomain();
+    CommonDomain originBean = diffBean.getOriginDomain();
     Set<String> originFieldSet = null;
-    if (originDomain == null || !originDomain.getClass().equals(diffBean.getClass())
-        || (originFieldSet = originDomain.getFieldSet()) == null || originFieldSet.size() == 0) {
+    if (originBean == null || !originBean.getClass().equals(diffBean.getClass())
+        || (originFieldSet = originBean.getFieldSet()) == null || originFieldSet.size() == 0) {
       throw new DAOException(HttpResultEnum.UpdateOriginEmptyError);
     }
 
-    diffBean.setUuid(originDomain.getUuid());
+    diffBean.setUuid(originBean.getUuid());
     diffBean.setVersion(null);
     diffBean.setCreator(null);
     diffBean.setCreateTime(null);
@@ -168,12 +179,12 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
 
     //  不求uuid得diff
     originFieldSet.remove(CommonConstants.UUID);
-    originDomain.setVersion(null);
-    originDomain.setCreator(null);
-    originDomain.setCreateTime(null);
+    originBean.setVersion(null);
+    originBean.setCreator(null);
+    originBean.setCreateTime(null);
     // 防止updater被篡改
-    originDomain.setUpdater(diffBean.getUpdater());
-    originDomain.setUpdateTime(null);
+    originBean.setUpdater(diffBean.getUpdater());
+    originBean.setUpdateTime(null);
   }
 
   @Override
@@ -207,11 +218,14 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
 
   /**
    * 检查数据是否有改动
+   *
+   * @param originBean originBean
+   * @param originDBBean originDBBean
    */
-  private void checkDeleteBean(B originDomain, B originDBBean) {
-    originDBBean.setUuid(originDomain.getUuid());
-    Set<String> originFieldSet = originDomain.getFieldSet();
-    PropertyDescriptor[] pds = BeanUtils.getPropertyDescriptors(originDomain.getClass());
+  private void checkDeleteBean(B originBean, B originDBBean) {
+    originDBBean.setUuid(originBean.getUuid());
+    Set<String> originFieldSet = originBean.getFieldSet();
+    PropertyDescriptor[] pds = BeanUtils.getPropertyDescriptors(originBean.getClass());
     for (PropertyDescriptor pd : pds) {
       Method writeMethod = pd.getWriteMethod();
       Method readMethod = pd.getReadMethod();
@@ -222,13 +236,15 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
       readMethod.setAccessible(true);
       try {
         if (originFieldSet.contains(pd.getName())) {
-          Object originValue = readMethod.invoke(originDomain);
+          Object originValue = readMethod.invoke(originBean);
           Object originDBValue = readMethod.invoke(originDBBean);
           if (originValue == null ? originDBValue != null : !originValue.equals(originDBValue)) {
             throw new DAOException(HttpResultEnum.DeleteWhileUpdated);
           }
         }
-      } catch (ReflectiveOperationException e) {
+      } catch (IllegalAccessException e) {
+        throw new DAOException(e);
+      } catch (InvocationTargetException e) {
         throw new DAOException(e);
       }
     }
@@ -256,11 +272,11 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
     this.checkBeanList(beanList);
     List<B> originDBBeanList =
         this.checkBatchOperationBefore(beanList, HttpResultEnum.BatchDeleteWhileChangeError);
-    Map<String, B> beanMap = new HashMap<>();
+    Map<String, B> beanMap = new HashMap<String, B>();
     for (B bean : originDBBeanList) {
       beanMap.put(bean.getUuid(), bean);
     }
-    List<B> originBeanList = new ArrayList<>();
+    List<B> originBeanList = new ArrayList<B>();
     for (B bean : beanList) {
       B originBean = beanMap.get(bean.getUuid());
       if (originBean != null) {
@@ -291,20 +307,20 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
   }
 
   protected List<B> queryOriginBeanList(List<B> conditionList) {
-    List<B> domainList = null;
+    List<B> beanList = null;
     if (conditionList != null && conditionList.size() > 0) {
       for (B condition : conditionList) {
         if (condition.getUuid() == null) {
           throw new DAOException("uuid in conditionList is null");
         }
       }
-      domainList = this.iBaseDao.queryOriginList(conditionList);
+      beanList = this.iBaseDao.queryOriginList(conditionList);
     }
-    if (conditionList == null || domainList == null || domainList.size() == 0
-        || conditionList.size() != domainList.size()) {
+    if (conditionList == null || beanList == null || beanList.size() == 0
+        || conditionList.size() != beanList.size()) {
       throw new DAOException(HttpResultEnum.NotExistedError);
     }
-    return domainList;
+    return beanList;
   }
 
   protected void checkBatchOperationAfter(List<B> beanList, IHttpResultEnum httpResultEnum) {
@@ -319,10 +335,14 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
 
   /**
    * 检查数据是否有改动
+   *
+   * @param beanList beanList
+   * @param originDBBeanList originDBBeanList
+   * @param httpResultEnum httpResultEnum
    */
   private void checkBatchOperationBean(List<B> beanList, List<B> originDBBeanList,
       IHttpResultEnum httpResultEnum) {
-    Map<String, B> beanMap = new HashMap<>();
+    Map<String, B> beanMap = new HashMap<String, B>();
     for (B bean : originDBBeanList) {
       beanMap.put(bean.getUuid(), bean);
     }
@@ -336,20 +356,22 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
         continue;
       }
       readMethod.setAccessible(true);
-      for (B originDomain : beanList) {
-        B originDBDomain = beanMap.get(originDomain.getUuid());
-        if (originDBDomain == null) {
+      for (B originBean : beanList) {
+        B originDBBean = beanMap.get(originBean.getUuid());
+        if (originDBBean == null) {
           throw new DAOException(httpResultEnum);
         }
         try {
           if (originFieldSet.contains(pd.getName())) {
-            Object originValue = readMethod.invoke(originDomain);
-            Object originDBValue = readMethod.invoke(originDBDomain);
+            Object originValue = readMethod.invoke(originBean);
+            Object originDBValue = readMethod.invoke(originDBBean);
             if (originValue == null ? originDBValue != null : !originValue.equals(originDBValue)) {
               throw new DAOException(httpResultEnum);
             }
           }
-        } catch (ReflectiveOperationException e) {
+        } catch (IllegalAccessException e) {
+          throw new DAOException(e);
+        } catch (InvocationTargetException e) {
           throw new DAOException(e);
         }
       }
@@ -384,9 +406,6 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
     this.iBatchAfterRuleList.add(iBatchAfterRule);
   }
 
-  /**
-   * bean、dao不能为null
-   */
   private void checkBean(B bean) {
     if (bean == null) {
       throw new DAOException("bean is null");
@@ -396,9 +415,6 @@ public abstract class AbstractBaseDao<B extends CommonDomain> implements IBaseDa
     }
   }
 
-  /**
-   * beanList、dao不能为null
-   */
   private void checkBeanList(List<B> beanList) {
     if (beanList == null || beanList.size() == 0) {
       throw new DAOException("beanList is empty");

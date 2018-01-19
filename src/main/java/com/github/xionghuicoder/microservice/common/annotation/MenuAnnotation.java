@@ -10,9 +10,10 @@ import java.lang.annotation.Target;
 import org.springframework.core.annotation.AliasFor;
 
 /**
- * 开启路径配置
+ * 菜单配置
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
  */
 @Target({ElementType.TYPE, ElementType.METHOD})
@@ -26,5 +27,4 @@ public @interface MenuAnnotation {
 
   @AliasFor("value")
   String[] menus() default {};
-
 }

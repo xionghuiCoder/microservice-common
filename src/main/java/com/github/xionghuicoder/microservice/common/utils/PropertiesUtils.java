@@ -5,19 +5,21 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 
-import com.github.xionghuicoder.microservice.common.exception.BusinessException;
+import com.github.xionghuicoder.microservice.common.BusinessException;
 
 /**
- * please @see {@link java.util.Properties} <br />
- *
- * 不加载value，只加载key，检查key是否重复
+ * 根据{@link Properties Properties}修改：不加载value，只加载key，检查key是否重复，<br>
+ * 一旦检查到key重复会抛出{@link BusinessException BusinessException}异常
  *
  * @author xionghui
+ * @version 1.0.0
  * @since 1.0.0
+ * @see java.util.Properties
  */
 public class PropertiesUtils {
-  private final Map<String, String> kvMap = new HashMap<>();
+  private final Map<String, String> kvMap = new HashMap<String, String>();
 
   public void load(String fileName, InputStream inStream) throws IOException {
     this.load0(fileName, new LineReader(inStream));
