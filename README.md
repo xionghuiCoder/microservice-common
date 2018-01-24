@@ -21,5 +21,3 @@ microservice-common
 <li>JDK支持1.6或1.6+</li>
 <li>在修改源码前，请导入googlestyle-java.xml以保证一致的代码格式</li>
 </ol>
-
-### 代码使用了lombok，在IDE内调试需要安装相关插件: [安装文档](https://projectlombok.org/setup)
