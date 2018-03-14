@@ -4,23 +4,17 @@ import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-import java.util.IdentityHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.core.io.support.ResourcePatternResolver;
-import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
-import org.springframework.core.type.classreading.MetadataReader;
-import org.springframework.core.type.classreading.MetadataReaderFactory;
-import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 import com.github.xionghuicoder.microservice.common.BusinessException;
@@ -46,8 +40,6 @@ import com.github.xionghuicoder.microservice.common.bean.enums.HttpRequestMethod
  * @since 1.0.0
  */
 public abstract class RegisterController implements BeanFactoryAware {
-  private static final String RESOURCE_PATTERN = "/**/*.class";
-
   private final Map<RegisterBean, Object> beanMap = new ConcurrentHashMap<RegisterBean, Object>();
 
   @Override
@@ -57,52 +49,30 @@ public abstract class RegisterController implements BeanFactoryAware {
     if (controllerMappingAnnotation == null) {
       return;
     }
-    String path = controllerMappingAnnotation.value();
-    String pattern = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX
-        + ClassUtils.convertClassNameToResourcePath(path) + RESOURCE_PATTERN;
-    this.dealResource(pattern, (ListableBeanFactory) beanFactory);
-  }
-
-  /**
-   * 扫描包
-   *
-   * @param pattern 扫描包的路径
-   * @param beanFactory beanFactory
-   */
-  private void dealResource(String pattern, ListableBeanFactory beanFactory) {
-    ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver();
-    try {
-      Map<Object, Boolean> identityBeanMap = new IdentityHashMap<Object, Boolean>();
-      Resource[] resources = resourcePatternResolver.getResources(pattern);
-      MetadataReaderFactory readerFactory =
-          new CachingMetadataReaderFactory(resourcePatternResolver);
-      for (Resource resource : resources) {
-        if (resource.isReadable()) {
-          MetadataReader reader = readerFactory.getMetadataReader(resource);
-          String className = reader.getClassMetadata().getClassName();
-          Class<?> beanClazz = Class.forName(className);
-          EnablePathConfigAnnotation enablePathConfigAnnotation =
-              beanClazz.getAnnotation(EnablePathConfigAnnotation.class);
-          // 未开启路径配置则不处理该bean
-          if (enablePathConfigAnnotation == null) {
-            continue;
-          }
-          String[] beanNames = beanFactory.getBeanNamesForType(beanClazz);
-          // 没有bean
-          if (beanNames == null || beanNames.length == 0) {
-            throw new BusinessException("dealResource beanNames illegal: " + beanClazz);
-          }
-          Object bean = beanFactory.getBean(beanClazz);
-          // 不重复处理bean
-          if (identityBeanMap.containsKey(bean)) {
-            continue;
-          }
-          identityBeanMap.put(bean, true);
-          this.registerBeans(beanClazz, bean);
+    Map<String, Object> beanMap = ((ListableBeanFactory) beanFactory)
+        .getBeansWithAnnotation(EnablePathConfigAnnotation.class);
+    if (beanMap == null || beanMap.size() == 0) {
+      return;
+    }
+    for (Map.Entry<String, Object> entry : beanMap.entrySet()) {
+      Object bean = entry.getValue();
+      Class<?> objClz;
+      if (AopUtils.isAopProxy(bean)) {
+        objClz = AopUtils.getTargetClass(bean);
+      } else {
+        objClz = bean.getClass();
+      }
+      Map<MethodBean, Method> methodMap = new HashMap<MethodBean, Method>();
+      // 只遍历公有方法
+      Method[] methods = objClz.getMethods();
+      if (methods != null) {
+        for (Method method : methods) {
+          methodMap.put(
+              new MethodBean(method.getName(), method.getReturnType(), method.getParameterTypes()),
+              method);
         }
       }
-    } catch (Exception e) {
-      throw new BusinessException("dealResource error", e);
+      this.registerBeans(bean, methodMap);
     }
   }
 
@@ -112,40 +82,47 @@ public abstract class RegisterController implements BeanFactoryAware {
    * @param beanClazz beanClazz
    * @param bean bean
    */
-  private void registerBeans(Class<?> beanClazz, Object bean) {
+  private void registerBeans(Object bean, Map<MethodBean, Method> methodMap) {
     // 只遍历公有方法
-    Method[] methods = beanClazz.getMethods();
+    Method[] methods = bean.getClass().getMethods();
     if (methods == null) {
       return;
     }
     for (Method method : methods) {
-      PathConfigAnnotation pathConfigAnnotation = method.getAnnotation(PathConfigAnnotation.class);
-      if (pathConfigAnnotation != null) {
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        if (parameterTypes == null) {
-          throw new BusinessException(
-              "the controller method's params don't matched " + HttpResult.class);
-        }
-        if (parameterTypes.length != 1) {
-          throw new BeanCreationException("the controller method's params' length don't matched 1");
-        }
-        if (!ServiceParamsBean.class.isAssignableFrom(parameterTypes[0])) {
-          throw new BusinessException(
-              "the controller method's params don't matched ServiceParamsBean");
-        }
-        ControllerProxy controllerProxy =
-            new ControllerProxy(bean, pathConfigAnnotation.supportZuul(),
-                pathConfigAnnotation.supportFeign(), pathConfigAnnotation.method(), method);
-        String uri = pathConfigAnnotation.uri();
-        String path = pathConfigAnnotation.value();
-        if ("".equals(path)) {
-          path = pathConfigAnnotation.path();
-        }
-        RegisterBean registerBean = new RegisterBean(this.dealUri(uri), path);
-        Object oldBean = this.beanMap.put(registerBean, controllerProxy);
-        if (oldBean != null) {
-          throw new BusinessException("create bean repeat, registerBean is " + registerBean);
-        }
+      Method originMethod = methodMap.get(
+          new MethodBean(method.getName(), method.getReturnType(), method.getParameterTypes()));
+      if (originMethod == null) {
+        continue;
+      }
+      PathConfigAnnotation pathConfigAnnotation =
+          originMethod.getAnnotation(PathConfigAnnotation.class);
+      if (pathConfigAnnotation == null) {
+        continue;
+      }
+      Class<?>[] parameterTypes = method.getParameterTypes();
+      if (parameterTypes == null) {
+        throw new BusinessException(
+            "the controller method's params don't matched " + HttpResult.class);
+      }
+      if (parameterTypes.length != 1) {
+        throw new BeanCreationException("the controller method's params' length don't matched 1");
+      }
+      if (!ServiceParamsBean.class.isAssignableFrom(parameterTypes[0])) {
+        throw new BusinessException(
+            "the controller method's params don't matched ServiceParamsBean");
+      }
+      ControllerProxy controllerProxy =
+          new ControllerProxy(bean, pathConfigAnnotation.supportZuul(),
+              pathConfigAnnotation.supportFeign(), pathConfigAnnotation.method(), method);
+      String uri = pathConfigAnnotation.uri();
+      String path = pathConfigAnnotation.value();
+      if ("".equals(path)) {
+        path = pathConfigAnnotation.path();
+      }
+      RegisterBean registerBean = new RegisterBean(this.dealUri(uri), path);
+      Object oldBean = this.beanMap.put(registerBean, controllerProxy);
+      if (oldBean != null) {
+        throw new BusinessException("create bean repeat, registerBean is " + registerBean);
       }
     }
   }
@@ -290,6 +267,48 @@ public abstract class RegisterController implements BeanFactoryAware {
       return "ControllerProxy [controller=" + this.controller + ", supportZuul=" + this.supportZuul
           + ", supportFeign=" + this.supportFeign + ", httpRequestMethods="
           + Arrays.toString(this.httpRequestMethods) + ", method=" + this.method + "]";
+    }
+  }
+
+  private static class MethodBean {
+    final String name;
+    final Class<?> returnType;
+    final Class<?>[] parameterTypes;
+
+    MethodBean(String name, Class<?> returnType, Class<?>[] parameterTypes) {
+      this.name = name;
+      this.returnType = returnType;
+      this.parameterTypes = parameterTypes;
+    }
+
+    @Override
+    public int hashCode() {
+      int result = 17;
+      result = 31 * result + ((this.name == null) ? 0 : this.name.hashCode());
+      result = 31 * result + ((this.returnType == null) ? 0 : this.returnType.hashCode());
+      result = 31 * result + Arrays.hashCode(this.parameterTypes);
+      return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (!(obj instanceof MethodBean)) {
+        return false;
+      }
+      MethodBean other = (MethodBean) obj;
+      return (this.name == null ? other.name == null : this.name == other.name)
+          && (this.returnType == null ? other.returnType == null
+              : this.returnType.equals(other.returnType))
+          && Arrays.equals(this.parameterTypes, other.parameterTypes);
+    }
+
+    @Override
+    public String toString() {
+      return "MethodBean [name=" + this.name + ", returnType=" + this.returnType
+          + ", parameterTypes=" + Arrays.toString(this.parameterTypes) + "]";
     }
   }
 }

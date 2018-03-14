@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 
 /**
  * 定义需要扫描的包路径
- * 
+ *
  * @author xionghui
  * @version 1.0.0
  * @since 1.0.0
@@ -20,5 +20,11 @@ import java.lang.annotation.Target;
 @Inherited
 public @interface ControllerMappingAnnotation {
 
+  /**
+   *
+   * @return the path to scan
+   * @deprecated The value is not available after version 1.0.1
+   */
+  @Deprecated
   String value() default "";
 }
