@@ -100,6 +100,24 @@
 			<artifactId>aspectjweaver</artifactId>
 			<version>1.8.3</version>
 		</dependency>
+		<!-- validator 框架 -->
+		<dependency>
+			<groupId>org.hibernate.validator</groupId>
+			<artifactId>hibernate-validator</artifactId>
+			<version>6.0.10.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.el</groupId>
+			<artifactId>javax.el-api</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.glassfish.web</groupId>
+			<artifactId>javax.el</artifactId>
+			<version>2.2.4</version>
+		</dependency>
+
+		<!-- validator 框架 -->
 	</dependencies>
 
 	<build>
@@ -211,7 +229,7 @@
 		<developer>
 			<id>chengjinhui</id>
 			<name>小灰</name>
-			<email>cjh985023455@126.com</email>
+			<email>cjh985034577@126.com</email>
 		</developer>
 	</developers>
 
